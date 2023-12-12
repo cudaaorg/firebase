@@ -31,7 +31,10 @@ exports.doQuery = onRequest({cors: [/webflow\.io$/]}
       logger.info(request.body, {structuredData: true});
       const data = request.body;
       if (!data) {
-        return response(400).send("no data");
+        const result = {
+          error: "no data",
+        };
+        return response(400).send(result);
       }
       let jsonData;
       try {
@@ -39,16 +42,23 @@ exports.doQuery = onRequest({cors: [/webflow\.io$/]}
       } catch (error) {
         jsonData = data;
       }
-      logger.info(jsonData.uid, {structuredData: true});
-      logger.info(jsonData, {structuredData: true});
-      if (jsonData.uid) {
-        const ref = admin.database().ref("user/" + jsonData.uid);
+      logger.info(jsonData.collection + " " + jsonData.key,
+          {structuredData: true});
+      if (jsonData.collection && jsonData.key) {
+        const ref = admin.database().ref(jsonData.collection+"/"+jsonData.key);
         ref.once("value", (snapshot) => {
           logger.info(snapshot.val(), {structuredData: true});
-          response.send(snapshot.val());
+          const result = {
+            key: jsonData.key,
+            data: snapshot.val(),
+          };
+          response.send(result);
         });
       } else {
-        response(400).send("uid not found");
+        const result = {
+          error: "key not found",
+        };
+        response(400).send(result);
       }
       return;
     });
@@ -63,7 +73,10 @@ exports.doSetQuery = onRequest({cors: [/webflow\.io$/]}
     , (request, response) => {
       const data = request.body;
       if (!data) {
-        return response(400).send("no data");
+        const result = {
+          error: "no data",
+        };
+        return response(400).send(result);
       }
       let jsonData;
       try {
@@ -71,13 +84,26 @@ exports.doSetQuery = onRequest({cors: [/webflow\.io$/]}
       } catch (error) {
         jsonData = data;
       }
-      logger.info(jsonData.uid + " " + jsonData.data, {structuredData: true});
-      logger.info(jsonData, {structuredData: true});
-      if (jsonData.uid) {
-        const ref = admin.database().ref("user/");
-        const userRef = ref.child(jsonData.uid);
-        userRef.update(jsonData.data);
-        return response.send("ok");
+      logger.info(jsonData.collection + " " + jsonData.key,
+          {structuredData: true});
+      if (jsonData.collection && jsonData.key) {
+        const ref = admin.database().ref(jsonData.collection+"/"+jsonData.key);
+        ref.update(jsonData.data).then(() => {
+          const result = {
+            error: "no error",
+          };
+          response.send(result);
+        }).catch((err) => {
+          const result = {
+            error: err,
+          };
+          response.send(result);
+        });
+      } else {
+        const result = {
+          error: "key not found",
+        };
+        response(400).send(result);
       }
-      return response(400).send("uid not found");
+      return;
     });
